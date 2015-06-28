@@ -1,0 +1,22 @@
+
+## directories
+#directory/
+
+## filetypes
+*.csv
+*.pdf
+*.json
+*.xls
+*.xlsx
+*.ods
+*.jpg
+*.png
+*.jar
+*.svg
+*.html
+*.md
+*.aux
+*.swp
+
+## files
+client_id.txt
