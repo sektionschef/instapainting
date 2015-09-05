@@ -3,7 +3,7 @@ import http.requests.*; // the http lib
 int canvas_side = 640;
 int distance = 60; //distance between vertices //40 default
 int offset_random = 25; //random distor variable, offset for vertices //10 default
-float easing = 0.1;
+float easing = 0.2;
 int number_vertices = 18; //size of the grid
 PVector[][] vertices = new PVector[number_vertices][number_vertices]; //the dynamic value of position
 PVector[][] vertices_start = new PVector[number_vertices][number_vertices]; //the static value for the starting postion
@@ -32,6 +32,7 @@ int goal_vertex; //point where the vertex of traingle moves to
 color grabbed; //color grabbed per triangle
 
 PImage userphoto;     // to hold the incoming image
+PImage painted_canvas; //the painting - projection area
 
 void setup()
 {
@@ -51,9 +52,12 @@ void setup()
   smooth();
   userphoto = loadImage("example_crop.jpg"); //for the first run
   image(userphoto, 0, 0);
-  getGrams(); //get instagram images
+  //getGrams(); //get instagram images
   defineVertices(); //define the vertices
-  createTriangles(); //create triangles with random coordinates
+  //createTriangles(); //create triangles with random coordinates
+  
+  painted_canvas = loadImage("painting_cut.jpg"); //for the first run
+  image(painted_canvas, 0, 0);
 }
 
 void draw()
@@ -74,7 +78,9 @@ void draw()
     defineVertices();
   }
 
+  image(userphoto, 0, 0); // important to erase the triangles of the last run
 
+  
   //println("Change Triangles...");
   createTriangles();
 
@@ -246,7 +252,6 @@ void createTriangles() {
 
             chooseColor(); //fill with grabbed color or with transparency
 
-
             //stroke(255,0,0); //draw the lines for debugging  
             beginShape(TRIANGLES); //draw triangles out of vertices
             //coordinates of triangle for drawing
@@ -256,6 +261,7 @@ void createTriangles() {
             endShape();
          }
     }
+
 
     // calculate middle of triangle second half - 1 point first row, 2 points second row
     for (int j = 0; j < (number_vertices - 1); j ++) { // -1 because the next j item is always used in the nested loop
@@ -272,7 +278,7 @@ void createTriangles() {
             syb = syb % canvas_side;
 
             //grab colour
-            loadPixels(); //needed
+            loadPixels(); //needed - nur einmal mit dem richtigen bild und dann
               grabbed = pixels[int(abs(sxb)) + int(abs(syb)) * width]; //get color at pixel(342,456)
             updatePixels(); //needed
 
@@ -291,7 +297,8 @@ void createTriangles() {
 
 
 void chooseColor() {
-  if (int(random(0,9)) == 5) {
+  //if (int(random(0,9)) == 5) { ## random see background
+  if (3==4) {
     fill(0,0,0,0); //fill with transparency
   } else {
     fill(grabbed); //fill with grabbed colour
