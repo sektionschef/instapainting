@@ -3,7 +3,7 @@ import http.requests.*; // the http lib
 int canvas_side = 640;
 int distance = 60; //distance between vertices //40 default
 int offset_random = 25; //random distor variable, offset for vertices //10 default
-float easing = 0.2;
+float easing = 0.005;
 int number_vertices = 18; //size of the grid
 PVector[][] vertices = new PVector[number_vertices][number_vertices]; //the dynamic value of position
 PVector[][] vertices_start = new PVector[number_vertices][number_vertices]; //the static value for the starting postion
@@ -52,6 +52,8 @@ void setup()
   smooth();
   userphoto = loadImage("example_crop.jpg"); //for the first run
   image(userphoto, 0, 0);
+  loadPixels(); //load the pixels of the image in an array from which to pick the center of traingel value
+  
   //getGrams(); //get instagram images
   defineVertices(); //define the vertices
   //createTriangles(); //create triangles with random coordinates
@@ -71,6 +73,7 @@ void draw()
     if (userphoto != null) {
       println("userphoto available");
       image(userphoto, 0, 0, 640, 640); //load userphoto
+      loadPixels(); //load the pixels of the image in an array from which to pick the center of traingel value
     } else {
       println("userphoto null");
     }
@@ -78,8 +81,10 @@ void draw()
     defineVertices();
   }
 
-  image(userphoto, 0, 0); // important to erase the triangles of the last run
-
+  //image(userphoto, 0, 0); // important to erase the triangles of the last run
+  image(painted_canvas, 0, 0); // important to erase the triangles of the last run
+  
+  //nur ein loop erhoeht geschwindigkeit
   
   //println("Change Triangles...");
   createTriangles();
@@ -156,102 +161,44 @@ void defineVertices() {
 
 
 void createTriangles() {
-    // calculate middle of triangle first half - 2 points first row, 1 point second row
     for (int j = 0; j < (number_vertices - 1); j ++) { // -1 because the next j item is always used in the nested loop
         for (int i = 0; i < (number_vertices -1); i++) { // -1 because the last one is not neede anymore
             
-           /*
-            if(i == 2 & j==3) {
-            println(start_vertex + " - " + goal_vertex);
-            print("start: ");
-            println(vertices_start[i][j]);
-            print("end: ");
-            println(vertices_end[i][j]);
-            print("status: ");
-            println(vertices[i][j]);
-            print("goal: ");
-            println(vertices_goal[i][j]);
-            println("..");
-            print("distance zu goal:");
-            println(PVector.dist(vertices_goal[i][j], vertices[i][j]));
-            }
-            */
-
             if (int(PVector.dist(vertices_end[i][j], vertices[i][j])) < 1 & int(PVector.dist(vertices[i][j], vertices_goal[i][j])) < 1) { //check distance to static value, if reached use the start value as goal
                 vertices_goal[i][j] = vertices_start[i][j];
-             /*   
-                println("get to end");
-                print("distance zu end: ");
-                println(PVector.dist(vertices_end[i][j], vertices[i][j]));
-                //println(vertices_goal[i][j]);
-                print("distance to goal: ");
-               println(PVector.dist(vertices[i][j], vertices_goal[i][j]));
-             */
             }
             
             
             if (int(PVector.dist(vertices_start[i][j], vertices[i][j])) < 1 & int(PVector.dist(vertices[i][j], vertices_goal[i][j])) < 1) { //check distance to static value, if reached use the end value as goal
                vertices_goal[i][j] = vertices_end[i][j]; 
-            /*   
-               println("get to start");
-               print("distance zu start: ");
-               println(PVector.dist(vertices_start[i][j], vertices[i][j]));
-               //println(vertices_goal[i][j]);
-               print("distance to goal: ");
-               println(PVector.dist(vertices[i][j], vertices_goal[i][j]));
-            */
             }
-            
-            
-            //print("noch nicht: ");
-            //println(vertices_start[i][j]);  
-            
             
                        
             vertices_distance[i][j] = PVector.sub(vertices_goal[i][j], vertices[i][j]); //calculate distance between goal and the vertex
             
-            /*
-            if(i == 2 & j==3) {
-                        print("hier?: ");
-            print("start");
-            println(vertices_start[i][j]);
-            print("distance");
-            println(vertices_distance[i][j]);
-            print("add factor");
-            println(PVector.mult(vertices_distance[i][j],easing));
-            println(PVector.add(vertices[i][j],PVector.mult(vertices_distance[i][j],easing)));
-            }
-            */
-            
             vertices[i][j] = PVector.add(vertices[i][j], PVector.mult(vertices_distance[i][j],easing)); //add easing factor * remaining distance to the vertex reducing the distance... the higher the distance the higher the speed towards the goal. die differenz muss immer wieder errechnet werden, der startwert allerdings einmal übergeben werden.
 
-            /*
-            if(i == 2 & j==3) {
-                        print("aber hier: ");
-            println(vertices_start[i][j]);
-            println("..");
-            }
-            */
 
-            //calculate coordinates of center of triangle
+            // calculate center of triangle first half - 2 points first row, 1 point second row
             sxa = (vertices[i][j].x + vertices[i][j+1].x + vertices[i+1][j].x)/3; //sx coordinate of first triangle
             sya = (vertices[i][j].y + vertices[i][j+1].y + vertices[i+1][j].y)/3;
             //point(sxa,sya); //debug
            
-            
             // limit to canvas size
             sxa = sxa % canvas_side;
             sya = sya % canvas_side;
+           
+            
+            // calculate coordinates of triangle second half - 1 point first row, 2 points second row
+            sxb = (vertices[i][j+1].x + vertices[i+1][j].x + vertices[i+1][j+1].x)/3; //sx coordinate of second triangle
+            syb = (vertices[i][j+1].y + vertices[i+1][j].y + vertices[i+1][j+1].y)/3;
+            //point(sxb,syb); //debug
 
-
-            //grab colour
-            loadPixels(); //needed for this method
-              grabbed = pixels[int(abs(sxa)) + int(abs(sya)) * width]; //get color at pixel(342,456)
-            updatePixels(); //needed
-
-
-            chooseColor(); //fill with grabbed color or with transparency
-
+            // limit to canvas size
+            sxb = sxb % canvas_side;
+            syb = syb % canvas_side;
+            
+            chooseColor(sxa, sya); //grab colour on the basis of center of triangle
             //stroke(255,0,0); //draw the lines for debugging  
             beginShape(TRIANGLES); //draw triangles out of vertices
             //coordinates of triangle for drawing
@@ -259,49 +206,36 @@ void createTriangles() {
               vertex( vertices[i][j+1].x, vertices[i][j+1].y);
               vertex( vertices[i+1][j].x, vertices[i+1][j].y);
             endShape();
-         }
-    }
-
-
-    // calculate middle of triangle second half - 1 point first row, 2 points second row
-    for (int j = 0; j < (number_vertices - 1); j ++) { // -1 because the next j item is always used in the nested loop
-        for (int i = 0; i < (number_vertices -1); i++) { // -1 because the last one is not neede anymore
-
-            //calculate coordinates of center of triangle
-            sxb = (vertices[i][j+1].x + vertices[i+1][j].x + vertices[i+1][j+1].x)/3; //sx coordinate of second triangle
-            syb = (vertices[i][j+1].y + vertices[i+1][j].y + vertices[i+1][j+1].y)/3;
-            //point(sxb,syb); //debug
-
-
-            // limit to canvas size
-            sxb = sxb % canvas_side;
-            syb = syb % canvas_side;
-
-            //grab colour
-            loadPixels(); //needed - nur einmal mit dem richtigen bild und dann
-              grabbed = pixels[int(abs(sxb)) + int(abs(syb)) * width]; //get color at pixel(342,456)
-            updatePixels(); //needed
-
-            chooseColor();//fill with grabbed color or with transparency
-
+            
+            chooseColor(sxb, syb);//fill with grabbed color or with transparency
             //draw the lines
             beginShape(TRIANGLES);
             //coordinates of triangle for drawing
               vertex( vertices[i][j+1].x, vertices[i][j+1].y);
               vertex( vertices[i+1][j].x, vertices[i+1][j].y);
               vertex( vertices[i+1][j+1].x, vertices[i+1][j+1].y);
-            endShape();
+            endShape();    
+            
+            
          }
     }
+    
 }
 
 
-void chooseColor() {
+void chooseColor(float sx,float sy) {
+  
+   //grab colour
+     grabbed = pixels[int(abs(sx)) + int(abs(sy)) * width]; //get color at pixel(342,456)
+ //  updatePixels(); //needed in combination wit loadPixels() ?? - however no change is made
+   
+  
+  // use grabbed colour or full transparency at random 
   //if (int(random(0,9)) == 5) { ## random see background
   if (3==4) {
     fill(0,0,0,0); //fill with transparency
   } else {
-    fill(grabbed); //fill with grabbed colour
+    fill(grabbed, 150); //fill with grabbed colour and transparency
   }
 }
 
