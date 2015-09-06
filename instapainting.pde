@@ -1,16 +1,22 @@
 import http.requests.*; // the http lib
+import deadpixel.keystone.*; //keystone library
 
 int canvas_side = 640;
 int distance = 60; //distance between vertices //40 default
 int offset_random = 25; //random distor variable, offset for vertices //10 default
 float easing = 0.005;
 int number_vertices = 18; //size of the grid
+int opa_factor = 150; // opacity of instagram triangles on canvas
+
 PVector[][] vertices = new PVector[number_vertices][number_vertices]; //the dynamic value of position
 PVector[][] vertices_start = new PVector[number_vertices][number_vertices]; //the static value for the starting postion
 PVector[][] vertices_end = new PVector[number_vertices][number_vertices]; //static value for the end position
 PVector[][] vertices_goal = new PVector[number_vertices][number_vertices]; //dynamic value for the end position
 PVector[][] vertices_distance = new PVector[number_vertices][number_vertices];
 
+// Load Fonts
+PFont Font_bold;
+PFont Font_normal;
 
 //get the API call together
 String API_url;
@@ -25,6 +31,7 @@ float sya;
 float sxb;
 float syb;
 
+
 int start_vertex; //point where the vertex of triangle starts
 int goal_vertex; //point where the vertex of traingle moves to
 //float distance_vertex; //the distance between start and goal - divided by easing speed
@@ -33,6 +40,12 @@ color grabbed; //color grabbed per triangle
 
 PImage userphoto;     // to hold the incoming image
 PImage painted_canvas; //the painting - projection area
+
+// Keystone objects
+Keystone ks; //keystone
+CornerPinSurface surface; //keystone
+PGraphics offscreen; 
+
 
 void setup()
 {
@@ -44,27 +57,45 @@ void setup()
   API_url = API_url_1 + Hashtag + API_url_2 + clientId;
   //println(API_url);     //debug
 
-  size( canvas_side, canvas_side );
+  size( canvas_side, canvas_side, P3D ); //P3D important for keystone, since it relies on texture mapping to deform; fill screen
+  ks = new Keystone(this);
+  surface = ks.createCornerPinSurface(canvas_side, canvas_side, 20); //height, width, distance grid
 
 
-  noFill();
-  noStroke();
-  smooth();
+  // We need an offscreen buffer to draw the surface we
+    // want projected
+    // note that we're matching the resolution of the
+    // CornerPinSurface.
+    // (The offscreen buffer can be P2D or P3D)
+  offscreen = createGraphics(canvas_side, canvas_side, P3D);
+
+  offscreen.beginDraw();
+  offscreen.noFill();
+  offscreen.noStroke();
+  offscreen.smooth();
   userphoto = loadImage("example_crop.jpg"); //for the first run
-  image(userphoto, 0, 0);
-  loadPixels(); //load the pixels of the image in an array from which to pick the center of traingel value
+  offscreen.image(userphoto, 0, 0, canvas_side, canvas_side);
+  offscreen.loadPixels(); //load the pixels of the image in an array from which to pick the center of traingel value
+  
   
   //getGrams(); //get instagram images
   defineVertices(); //define the vertices
   //createTriangles(); //create triangles with random coordinates
   
   painted_canvas = loadImage("painting_cut.jpg"); //for the first run
-  image(painted_canvas, 0, 0);
+  offscreen.image(painted_canvas, 0, 0);
+  
+  offscreen.endDraw();
+  surface.render(offscreen);
 }
 
 void draw()
 {
-
+  
+  background(0); //background black, so there is nothing in the projection
+    
+  offscreen.beginDraw();
+  
 //    background(0);
 
   if (frameCount % 1000 == 0) {
@@ -72,8 +103,8 @@ void draw()
     getGrams();
     if (userphoto != null) {
       println("userphoto available");
-      image(userphoto, 0, 0, 640, 640); //load userphoto
-      loadPixels(); //load the pixels of the image in an array from which to pick the center of traingel value
+      offscreen.image(userphoto, 0, 0, 640, 640); //load userphoto
+      offscreen.loadPixels(); //load the pixels of the image in an array from which to pick the center of traingel value
     } else {
       println("userphoto null");
     }
@@ -82,7 +113,7 @@ void draw()
   }
 
   //image(userphoto, 0, 0); // important to erase the triangles of the last run
-  image(painted_canvas, 0, 0); // important to erase the triangles of the last run
+  offscreen.image(painted_canvas, 0, 0); // important to erase the triangles of the last run
   
   //nur ein loop erhoeht geschwindigkeit
   
@@ -90,13 +121,11 @@ void draw()
   createTriangles();
 
 
-//translate( 30, 30 ); // move out of screen
+  offscreen.endDraw();
+  
+  //render the scene, transformed using the corner pin surface
+  surface.render(offscreen); 
 
-// get the same photo again
-/*
-  if (frameCount % 300 == 0) {
-  }
-*/
 
 }
 
@@ -175,7 +204,6 @@ void createTriangles() {
             
                        
             vertices_distance[i][j] = PVector.sub(vertices_goal[i][j], vertices[i][j]); //calculate distance between goal and the vertex
-            
             vertices[i][j] = PVector.add(vertices[i][j], PVector.mult(vertices_distance[i][j],easing)); //add easing factor * remaining distance to the vertex reducing the distance... the higher the distance the higher the speed towards the goal. die differenz muss immer wieder errechnet werden, der startwert allerdings einmal übergeben werden.
 
 
@@ -183,7 +211,6 @@ void createTriangles() {
             sxa = (vertices[i][j].x + vertices[i][j+1].x + vertices[i+1][j].x)/3; //sx coordinate of first triangle
             sya = (vertices[i][j].y + vertices[i][j+1].y + vertices[i+1][j].y)/3;
             //point(sxa,sya); //debug
-           
             // limit to canvas size
             sxa = sxa % canvas_side;
             sya = sya % canvas_side;
@@ -193,29 +220,29 @@ void createTriangles() {
             sxb = (vertices[i][j+1].x + vertices[i+1][j].x + vertices[i+1][j+1].x)/3; //sx coordinate of second triangle
             syb = (vertices[i][j+1].y + vertices[i+1][j].y + vertices[i+1][j+1].y)/3;
             //point(sxb,syb); //debug
-
             // limit to canvas size
             sxb = sxb % canvas_side;
             syb = syb % canvas_side;
             
             chooseColor(sxa, sya); //grab colour on the basis of center of triangle
-            //stroke(255,0,0); //draw the lines for debugging  
-            beginShape(TRIANGLES); //draw triangles out of vertices
+            //stroke(255,0,0); //debug - draw the lines for debugging  
+            //offscreen.fill(0,0,0); //debug
+            
+            offscreen.beginShape(TRIANGLES); //draw triangles out of vertices
             //coordinates of triangle for drawing
-              vertex( vertices[i][j].x, vertices[i][j].y);
-              vertex( vertices[i][j+1].x, vertices[i][j+1].y);
-              vertex( vertices[i+1][j].x, vertices[i+1][j].y);
-            endShape();
+              offscreen.vertex( vertices[i][j].x, vertices[i][j].y);
+              offscreen.vertex( vertices[i][j+1].x, vertices[i][j+1].y);
+              offscreen.vertex( vertices[i+1][j].x, vertices[i+1][j].y);
+            offscreen.endShape();
             
             chooseColor(sxb, syb);//fill with grabbed color or with transparency
-            //draw the lines
-            beginShape(TRIANGLES);
-            //coordinates of triangle for drawing
-              vertex( vertices[i][j+1].x, vertices[i][j+1].y);
-              vertex( vertices[i+1][j].x, vertices[i+1][j].y);
-              vertex( vertices[i+1][j+1].x, vertices[i+1][j+1].y);
-            endShape();    
             
+            offscreen.beginShape(TRIANGLES);
+            //coordinates of triangle for drawing
+              offscreen.vertex( vertices[i][j+1].x, vertices[i][j+1].y);
+              offscreen.vertex( vertices[i+1][j].x, vertices[i+1][j].y);
+              offscreen.vertex( vertices[i+1][j+1].x, vertices[i+1][j+1].y);
+            offscreen.endShape(); 
             
          }
     }
@@ -226,30 +253,64 @@ void createTriangles() {
 void chooseColor(float sx,float sy) {
   
    //grab colour
-     grabbed = pixels[int(abs(sx)) + int(abs(sy)) * width]; //get color at pixel(342,456)
+     grabbed = offscreen.pixels[int(abs(sx)) + int(abs(sy)) * canvas_side]; //get color at pixel(342,456)
  //  updatePixels(); //needed in combination wit loadPixels() ?? - however no change is made
    
   
   // use grabbed colour or full transparency at random 
   //if (int(random(0,9)) == 5) { ## random see background
   if (3==4) {
-    fill(0,0,0,0); //fill with transparency
+    offscreen.fill(0,0,0,0); //fill with transparency
   } else {
-    fill(grabbed, 150); //fill with grabbed colour and transparency
+    offscreen.fill(grabbed, opa_factor); //fill with grabbed colour and transparency
   }
 }
 
 
-void keyPressed()
-{
+void keyPressed() {
+  switch(key) {
+  case 'c':
+    // enter/leave calibration mode, where surfaces can be warped 
+    // and moved
+    ks.toggleCalibration();
+    break;
+
+  case 'l':
+    // loads the saved layout
+    ks.load();
+    break;
+
+  case 's':
+    // saves the layout
+    ks.save();
+    break;
+    
+  case 'p': //less opacity of instagram triangles
+    if (opa_factor < 255) {
+      opa_factor+=5;
+      println("opa_factor: " + opa_factor);
+    }
+      break;
+  case 'o': //more opacity of instagram triangles
+    if (opa_factor < 255) {
+      opa_factor-=5;
+      println("opa_factor: " + opa_factor);
+    }
+      break;
+  case 'b':
+    // show image
+      println("Show Image!");
+      offscreen.image(userphoto, 0, 0 ); //load userphoto
+      break;
+  }
+}
+
+/*  
+
     if (key == '+') {
       println("Key Pressed! - Define Vertices");
       defineVertices();
       println("Key Pressed! - Change Triangles...");
       createTriangles();
     }
-    if (key == 's') {
-      println("Key Pressed s! - show");
-      image(userphoto, 0, 0, 640, 640); //load userphoto
-    }
-}
+*/
