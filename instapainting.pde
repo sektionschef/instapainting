@@ -1,6 +1,9 @@
 import http.requests.*; // the http lib
 import deadpixel.keystone.*; //keystone library
 
+int screen_width = 1024;
+int screen_height = 1024;
+
 int canvas_side = 640;
 int distance = 60; //distance between vertices //40 default
 int offset_random = 25; //random distor variable, offset for vertices //10 default
@@ -57,7 +60,7 @@ void setup()
   API_url = API_url_1 + Hashtag + API_url_2 + clientId;
   //println(API_url);     //debug
 
-  size( canvas_side, canvas_side, P3D ); //P3D important for keystone, since it relies on texture mapping to deform; fill screen
+  size( screen_width, screen_height, P3D ); //P3D important for keystone, since it relies on texture mapping to deform; fill screen
   ks = new Keystone(this);
   surface = ks.createCornerPinSurface(canvas_side, canvas_side, 20); //height, width, distance grid
 
@@ -114,6 +117,7 @@ void draw()
 
   //image(userphoto, 0, 0); // important to erase the triangles of the last run
   offscreen.image(painted_canvas, 0, 0); // important to erase the triangles of the last run
+  offscreen.background(255); //erase everything ##remove for presentation
   
   //nur ein loop erhoeht geschwindigkeit
   
