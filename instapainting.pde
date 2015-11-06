@@ -1,6 +1,9 @@
 import http.requests.*; // the http lib
 import deadpixel.keystone.*; //keystone library
 
+int screen_width = 1024;
+int screen_height = 1024;
+
 int canvas_side = 640;
 int distance = 60; //distance between vertices //40 default
 int offset_random = 25; //random distor variable, offset for vertices //10 default
@@ -139,6 +142,7 @@ void draw()
   //image(userphoto, 0, 0); // important to erase the triangles of the last run
   offscreen.background(255); //erase everything ##remove for presentation
   offscreen.image(painted_canvas, 0, 0); // important to erase the triangles of the last run
+  offscreen.background(255); //erase everything ##remove for presentation
   
   //nur ein loop erhoeht geschwindigkeit
   
