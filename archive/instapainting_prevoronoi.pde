@@ -1,9 +1,6 @@
 import http.requests.*; // the http lib
 import deadpixel.keystone.*; //keystone library
 
-int screen_width = 1024;
-int screen_height = 1024;
-
 int canvas_side = 640;
 int distance = 60; //distance between vertices //40 default
 int offset_random = 25; //random distor variable, offset for vertices //10 default
@@ -17,15 +14,11 @@ PVector[][] vertices_end = new PVector[number_vertices][number_vertices]; //stat
 PVector[][] vertices_goal = new PVector[number_vertices][number_vertices]; //dynamic value for the end position
 PVector[][] vertices_distance = new PVector[number_vertices][number_vertices];
 
-//hold result of edge detection
-int[] edge_pixels = new int[0]; // empty array with length is 0
-//hold result of color of edges
-int[] edge_color_pixels = new int[0]; // empty array with length is 0
-
 // Load Fonts
 //PFont Font_bold;
 //PFont Font_normal;
 PFont myFont;
+
 
 //get the API call together
 String API_url;
@@ -63,9 +56,6 @@ CornerPinSurface surface2;
 PGraphics offscreen2;
 
 
-Site[] sites; //voronoi regions
-
-
 
 void setup()
 {
@@ -80,7 +70,6 @@ void setup()
   API_url = API_url_1 + Hashtag + API_url_2 + clientId;
   //println(API_url);     //debug
 
-  painted_canvas = loadImage("painting_cut.jpg"); //the painting normalized
   myFont = createFont("Arial", 12);
 
   ks = new Keystone(this);
@@ -96,8 +85,6 @@ void setup()
     // CornerPinSurface.
     // (The offscreen buffer can be P2D or P3D)
   offscreen = createGraphics(canvas_side, canvas_side, P3D);
-  //label
-  offscreen2 = createGraphics(400, 100, P3D); //matching the Corner Pin Surface
 
   offscreen.beginDraw();
   offscreen.noFill();
@@ -105,25 +92,20 @@ void setup()
   offscreen.smooth();
   userphoto = loadImage("example_crop.jpg"); //for the first run
   offscreen.image(userphoto, 0, 0, canvas_side, canvas_side);
-   
  
   
-  // For the first run
+  
+  
+  //label
+  offscreen2 = createGraphics(400, 100, P3D); //matching the Corner Pin Surface
+  
+  
   //getGrams(); //get instagram images
-  //defineVertices(); //define the vertices
+  defineVertices(); //define the vertices
+  //createTriangles(); //create triangles with random coordinates
   
-  getContrastCoords(); // get the contrasts
-  
+  painted_canvas = loadImage("painting_cut.jpg"); //for the first run
   offscreen.image(painted_canvas, 0, 0);
-  
-  // create sites for voronoi areas
-  sites = new Site[edge_pixels.length];
-  for(int i=0; i<edge_pixels.length; i++) {
-    sites[i] = new Site(edge_pixels[i], edge_color_pixels[i]);
-  }
-  println("draw regions");
-  drawRegions();
-  println("regions drawn");
   
   offscreen.endDraw();
   surface.render(offscreen);
@@ -145,34 +127,27 @@ void draw()
     if (userphoto != null) {
       println("userphoto available");
       offscreen.image(userphoto, 0, 0, 640, 640); //load userphoto
-    //  userphoto.loadPixels(); //load the pixels of the image in an array from which to pick the center of traingle value
+    //  userphoto.loadPixels(); //load the pixels of the image in an array from which to pick the center of traingel value
       //userphoto.updatePixels(); //needed in combination wit loadPixels() 
     } else {
       println("userphoto null");
     }
     //println("Define Vertices");
-    //defineVertices();
-    getContrastCoords(); // get the contrasts
-      // create sites for voronoi areas
-    sites = new Site[edge_pixels.length];
-    for(int i=0; i<edge_pixels.length; i++) {
-      sites[i] = new Site(edge_pixels[i], edge_color_pixels[i]);
-    }
-    println("draw regions");
-    drawRegions();
-    println("regions drawn");
+    defineVertices();
   }
 
-  //Background
   //image(userphoto, 0, 0); // important to erase the triangles of the last run
-  //offscreen.background(255); //erase everything ##remove for presentation
-   //offscreen.image(painted_canvas, 0, 0); // important to erase the triangles of the last run
+  offscreen.background(255); //erase everything ##remove for presentation
+  offscreen.image(painted_canvas, 0, 0); // important to erase the triangles of the last run
+  
+  //nur ein loop erhoeht geschwindigkeit
   
   //println("Change Triangles...");
-  //createTriangles();
+  createTriangles();
   
   //add contrasts layer with transparency
-  //offscreen.image(edgeImg, 0, 0); // Draw the new image
+  //tint(255, 127); //overlay with transparency
+  offscreen.image(edgeImg, 0, 0); // Draw the new image
 
   offscreen.endDraw();
   
@@ -231,6 +206,7 @@ void getGrams() {
   userphoto = loadImage(URL);
   userphoto.resize(canvas_side, canvas_side); //limit to a certain size so, pixel count is constant
   
+  getContrastCoords(); // get the contrasts
   //println(userphoto.width);
 }
 
@@ -354,11 +330,6 @@ float colorcutrange(float x) {
 
 //PImage getContrastCoords() {
 void getContrastCoords() {
-  println("getcontrastcoords");
-  
-  edge_pixels = new int[0];
-  edge_color_pixels = new int[0];
-  
   //kerenel for adjacent pixels
   float[][] kernel = {{ -1, -1, -1}, 
                     { -1,  8, -1}, //used to be 9 in the middle
@@ -367,7 +338,6 @@ void getContrastCoords() {
   //PImage userphoto_gray = userphoto.filter(GRAY); http://forum.processing.org/two/discussion/452/24-bit-image-to-8-bit-grayscale-image - an 
   userphoto.loadPixels(); //load the pixels
   //println(userphoto.pixels.length);
-  edgeImg.loadPixels(); //load the pixels
   
   // Loop through every pixel in the image.
   for (int y = 1; y < canvas_side-1; y++) { // Skip top and bottom edges
@@ -391,26 +361,10 @@ void getContrastCoords() {
       }
       // For this pixel in the new image, set the gray value
       // based on the sum from the kernel
-      // save edges
-      if(sum > 230) {
+      if(sum > 100) {
         edgeImg.pixels[y*canvas_side + x] = color(sum, 255);
-        
-        //add to pixel array for edges
-        edge_pixels = expand(edge_pixels, (edge_pixels.length + 1)); //index starts at zero and length is count and is +1 
-        edge_pixels[edge_pixels.length-1] = y + x*canvas_side; //expandend array, length is +1 to index
-        
-        //add to color array for edges
-        edge_color_pixels = expand(edge_color_pixels, (edge_color_pixels.length + 1)); //index starts at zero and length is count and is +1 
-        
-        //grab colour 
-        grabbed = userphoto.pixels[int(abs(y)) + int(abs(x)) * canvas_side]; //get color at pixel(342,456) 
-        colorMode(HSB, 255);
-        //grabbed = color(hue(grabbed),saturation(grabbed),180); //center is 180
-        grabbed = color(hue(grabbed),colorcutrange(saturation(180)),colorcutrange(brightness(grabbed))); //get only the hue value and limit the rest to a certain threshold. so there is a limited variance of brightness, color differences are more dominant
-        edge_color_pixels[edge_color_pixels.length-1] = grabbed; //expandend array, length is +1 to index
-        
       } else {
-        edgeImg.pixels[y*canvas_side + x] = color(sum, 0); //no edge so nothing to see
+        edgeImg.pixels[y*canvas_side + x] = color(sum, 0);
       }
     }
   }
@@ -418,61 +372,7 @@ void getContrastCoords() {
   edgeImg.updatePixels();
   //return(edgeImg);
   userphoto.updatePixels(); //needed in combination wit loadPixels() ?? - however no change is made
-  println("getcoordsfinished");
 }  
-
-
-void drawRegions() {
-  offscreen.background(255); //erase everything ##remove for presentation
-  offscreen.loadPixels(); // must call before using pixels[]
-  
-  for(int x=0; x<canvas_side; x++) {
-    for(int y=0; y<canvas_side; y++) {
-      float minDist = 2*canvas_side; //beyond the maximum distance
-      int closest = 0;
-      for(int i=0; i<sites.length; i++) {
-        Site s = sites[i];
-        float d = dist(x,y, s.x, s.y);
-        if (d<minDist) {
-          closest = i;
-          minDist = d;
-        }
-      }
-      offscreen.pixels[y*canvas_side+x] = sites[closest].c;
-    }
-  }
-  offscreen.updatePixels(); // must call after using pixels[]
-}
-
-
-class Site {
-  int pixelito;
-  color color_pixelito;
-  float x, y;
-  color c;
-  //PVector vel;
-   
-  Site(int pixelito, color color_pixelito) {
-    //x = random(canvas_side);
-    //y = random(canvas_side);
-    x = pixelito / canvas_side + 1;
-    y = pixelito % canvas_side;
-    c = color_pixelito;
-    //c = color(random(128), random(128,192), random(128,255));
-    //vel = new PVector(random(-SITE_MAX_VEL,SITE_MAX_VEL), random(-SITE_MAX_VEL,SITE_MAX_VEL));
-  }
-  
-  /*
-  void move()
-  {
-    x += vel.x;
-    y += vel.y;
-    if ((x<0) || (x>width)) vel.x *= -1;
-    if ((y<0) || (y>height)) vel.y *= -1;
-  }
-  */
-}
-
 
 
 
